@@ -9,7 +9,18 @@
     "dev": "node --watch index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["research", "rag", "ai", "express"],
+  "keywords": [
+    "research",
+    "rag",
+    "ai",
+    "express"
+  ],
   "author": "Abhinav",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.7.3"
+  }
 }
