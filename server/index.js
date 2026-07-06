@@ -60,6 +60,9 @@ import connectDB from './config/db.js';
 // healthRoutes — the router that handles GET /api/health (from routes/healthRoutes.js).
 import healthRoutes from './routes/healthRoutes.js';
 
+// authRoutes — the router that handles POST /api/auth/signup and POST /api/auth/login.
+import authRoutes from './routes/authRoutes.js';
+
 // =============================================
 // Step 3: Create the Express application
 // =============================================
@@ -102,6 +105,10 @@ app.use(express.json());
 //   3. It passes the request to healthRoutes, which has a handler for GET '/'
 //   4. The handler runs and sends back the response
 app.use('/api/health', healthRoutes);
+
+// Auth routes — signup and login. No JWT required for these routes
+// (users need to be able to register and log in without being authenticated first).
+app.use('/api/auth', authRoutes);
 
 // =============================================
 // Step 6: Connect to MongoDB, then start the server
