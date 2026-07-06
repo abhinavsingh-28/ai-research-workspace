@@ -63,6 +63,9 @@ import healthRoutes from './routes/healthRoutes.js';
 // authRoutes — the router that handles POST /api/auth/signup and POST /api/auth/login.
 import authRoutes from './routes/authRoutes.js';
 
+// paperRoutes — the router that handles paper upload, listing, and deletion.
+import paperRoutes from './routes/paperRoutes.js';
+
 // =============================================
 // Step 3: Create the Express application
 // =============================================
@@ -93,6 +96,16 @@ app.use(cors());
 // Without this, req.body would be undefined.
 app.use(express.json());
 
+// express.static() — Serves files from a folder as-is over HTTP.
+// This makes uploaded PDFs accessible via URL. For example:
+//   A file at: uploads/1720000000-paper.pdf
+//   Is served at: http://localhost:5001/uploads/1720000000-paper.pdf
+// The React frontend will use these URLs to display PDFs in the viewer.
+//
+// resolve(__dirname, '../uploads') builds the absolute path to the uploads/ folder.
+// We use the absolute path to avoid issues with different working directories.
+app.use('/uploads', express.static(resolve(__dirname, '../uploads')));
+
 // =============================================
 // Step 5: Mount routes
 // =============================================
@@ -109,6 +122,10 @@ app.use('/api/health', healthRoutes);
 // Auth routes — signup and login. No JWT required for these routes
 // (users need to be able to register and log in without being authenticated first).
 app.use('/api/auth', authRoutes);
+
+// Paper routes — upload, list, get, delete. All require JWT authentication.
+// The auth middleware is applied INSIDE paperRoutes.js on each individual route.
+app.use('/api/papers', paperRoutes);
 
 // =============================================
 // Step 6: Connect to MongoDB, then start the server
