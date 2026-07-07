@@ -86,6 +86,20 @@ router.post('/', auth, async (req, res) => {
       userId: req.user.userId,             // The authenticated user's ID (from auth middleware)
     });
 
+    // ---- Trigger ML Service Ingestion ----
+    // We do NOT await this request! We want to fire-and-forget so the frontend
+    // gets a fast response (201 Created) while the heavy ML processing runs in the background.
+    // This is a common microservices pattern for slow, asynchronous tasks.
+    const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+    fetch(`${mlServiceUrl}/process-document`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        paperId: paper._id.toString(),
+        fileName: paper.fileName
+      })
+    }).catch(err => console.error('⚠️ Failed to trigger ML service:', err.message));
+
     // ---- Return the created paper ----
     // Status 201 = "Created" — a new resource was successfully created.
     res.status(201).json({

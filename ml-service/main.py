@@ -139,3 +139,36 @@ async def health_check():
         },
         "gemini_configured": os.getenv("GEMINI_API_KEY", "").startswith("AI"),
     }
+
+# ============================================
+# Pydantic Models
+# ============================================
+# Pydantic is FastAPI's secret weapon. It enforces strict typing
+# on incoming JSON requests. If the Node backend sends a request
+# missing 'paperId' or 'fileName', FastAPI automatically returns a
+# 422 Unprocessable Entity error — we don't have to write validation code!
+from pydantic import BaseModel
+
+class ProcessRequest(BaseModel):
+    paperId: str
+    fileName: str
+
+from document_processor import process_paper
+
+@app.post("/process-document")
+async def process_document_endpoint(req: ProcessRequest):
+    """
+    Endpoint called by the Node.js backend when a new paper is uploaded.
+    It triggers the extraction, chunking, and embedding pipeline.
+    """
+    try:
+        # process_paper is a synchronous blocking function right now.
+        # In a production app, we'd use BackgroundTasks or Celery here
+        # so we don't block the FastAPI event loop. For simplicity,
+        # we'll just run it directly.
+        result = process_paper(req.paperId, req.fileName)
+        return result
+    except Exception as e:
+        # If anything goes wrong, return a 500 error to the Node backend
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
