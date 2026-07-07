@@ -66,6 +66,9 @@ import authRoutes from './routes/authRoutes.js';
 // paperRoutes — the router that handles paper upload, listing, and deletion.
 import paperRoutes from './routes/paperRoutes.js';
 
+// conversationRoutes — handles branched RAG chat sessions.
+import conversationRoutes from './routes/conversationRoutes.js';
+
 // =============================================
 // Step 3: Create the Express application
 // =============================================
@@ -126,6 +129,9 @@ app.use('/api/auth', authRoutes);
 // Paper routes — upload, list, get, delete. All require JWT authentication.
 // The auth middleware is applied INSIDE paperRoutes.js on each individual route.
 app.use('/api/papers', paperRoutes);
+
+// Conversation routes — branched RAG chat histories.
+app.use('/api/conversations', conversationRoutes);
 
 // =============================================
 // Step 6: Connect to MongoDB, then start the server

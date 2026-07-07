@@ -36,13 +36,14 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from vector_store import get_or_create_collection
 
 
-def query_paper(paper_id, question):
+def query_paper(paper_id: str, question: str, conversation_history: list = None):
     """
     The main RAG query pipeline for a single paper.
 
     Args:
         paper_id: The MongoDB _id of the paper (string)
         question: The user's question (string)
+        conversation_history: List of dicts with 'role' and 'content' for the branch context
 
     Returns:
         dict with 'answer' and 'sources' (the retrieved chunks)
@@ -107,6 +108,15 @@ def query_paper(paper_id, question):
 
     context = "\n\n---\n\n".join(retrieved_chunks)
 
+    # Format the conversation history
+    history_text = ""
+    if conversation_history:
+        history_text = "PRIOR CONVERSATION (Branch Context):\n"
+        for msg in conversation_history:
+            role = "USER" if msg.get("role") == "user" else "AI"
+            history_text += f"{role}: {msg.get('content')}\n"
+        history_text += "\n"
+
     prompt = f"""You are a helpful AI research assistant. You answer questions about research papers based ONLY on the provided context from the paper.
 
 Rules:
@@ -114,11 +124,12 @@ Rules:
 - If the context doesn't contain enough information to answer, say "I couldn't find information about that in this paper."
 - Be concise and clear. Use bullet points when listing multiple items.
 - Quote relevant passages when appropriate.
+- Consider the prior conversation history to understand the context of the user's current question.
 
 CONTEXT FROM THE PAPER:
 {context}
 
-USER'S QUESTION:
+{history_text}USER'S QUESTION:
 {question}
 
 ANSWER:"""

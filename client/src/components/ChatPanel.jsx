@@ -1,88 +1,217 @@
 // ============================================
-// ChatPanel — AI Chat Interface Component
+// ChatPanel — Recursive Threaded View
 // ============================================
-// This component provides a chat-style UI for asking questions
-// about the currently selected paper.
-//
-// It displays:
-//   - A scrollable list of messages (user questions + AI answers)
-//   - An input box at the bottom for typing questions
-//   - A loading indicator while the AI is thinking
-//
-// Props:
-//   paperId — the MongoDB _id of the selected paper (needed for the API call)
+// This component displays conversational branches simultaneously as a tree.
+// Users can see multiple branches at once and reply inline to any message.
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import apiClient from '../api/client';
 
-function ChatPanel({ paperId }) {
-  // ============================================
-  // State
-  // ============================================
-  // messages: array of { role: 'user' | 'assistant', content: string }
-  // input: the current text in the input box
-  // loading: true while waiting for the AI response
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+// ============================================
+// Helper: Build Tree
+// ============================================
+// Converts a flat array of messages (where each has a parentId)
+// into a nested tree structure (where each has a children[] array).
+function buildMessageTree(messages) {
+  const messageMap = {};
+  const roots = [];
 
-  // Ref to auto-scroll to the latest message
-  const messagesEndRef = useRef(null);
+  // Initialize map and children arrays
+  messages.forEach(msg => {
+    messageMap[msg._id] = { ...msg, children: [] };
+  });
 
-  // Auto-scroll to bottom whenever messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Clear messages when a different paper is selected
-  useEffect(() => {
-    setMessages([]);
-    setInput('');
-  }, [paperId]);
-
-  // ============================================
-  // Send a Question
-  // ============================================
-  const handleSend = async () => {
-    const question = input.trim();
-    if (!question || loading) return;
-
-    // Add the user's message to the chat immediately
-    const userMessage = { role: 'user', content: question };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
-
-    try {
-      // POST to our Node.js proxy route
-      // Note: apiClient.baseURL already includes '/api', so we just use '/papers/...'
-      const res = await apiClient.post(`/papers/${paperId}/chat`, {
-        question,
-      });
-
-      // Add the AI's response to the chat
-      const assistantMessage = {
-        role: 'assistant',
-        content: res.data.answer,
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      // Show an error message in the chat
-      const errorMessage = {
-        role: 'assistant',
-        content: error.response?.data?.message || 'Failed to get a response. Make sure the ML service is running.',
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setLoading(false);
+  // Link children to parents
+  messages.forEach(msg => {
+    const node = messageMap[msg._id];
+    if (msg.parentId && messageMap[msg.parentId]) {
+      messageMap[msg.parentId].children.push(node);
+    } else {
+      roots.push(node);
     }
+  });
+
+  return roots;
+}
+
+// ============================================
+// Recursive Message Node Component
+// ============================================
+function ChatMessageNode({ node, replyingToId, setReplyingToId, onSendReply }) {
+  const [inlineInput, setInlineInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isReplying = replyingToId === node._id;
+
+  const handleInlineSubmit = async () => {
+    if (!inlineInput.trim()) return;
+    setIsSubmitting(true);
+    await onSendReply(inlineInput, node._id);
+    setInlineInput('');
+    setIsSubmitting(false);
+    setReplyingToId(null);
   };
 
-  // Allow sending with Enter key
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleInlineSubmit();
+    }
+  };
+
+  return (
+    <div className="chat-thread-node">
+      {/* The Message Itself */}
+      <div className={`chat-message ${node.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'}`}>
+        <div className="chat-message-avatar">
+          {node.role === 'user' ? '👤' : '🤖'}
+        </div>
+        <div className="chat-message-content">
+          {node.content}
+          
+          {/* Action buttons (only AI responses can be branched from) */}
+          {node.role === 'assistant' && node._id !== 'temp-error' && !node._id.startsWith('temp-') && (
+            <div className="chat-message-actions">
+              <button 
+                className="branch-btn"
+                onClick={() => setReplyingToId(isReplying ? null : node._id)}
+                title="Start a new conversation branch from this message"
+              >
+                {isReplying ? 'Cancel' : '⑂ Branch from here'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Inline Reply Box (if active) */}
+      {isReplying && (
+        <div className="chat-inline-reply">
+          <input
+            autoFocus
+            type="text"
+            className="chat-input"
+            placeholder="Ask a follow-up question..."
+            value={inlineInput}
+            onChange={(e) => setInlineInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isSubmitting}
+          />
+          <button
+            className="chat-send-btn"
+            onClick={handleInlineSubmit}
+            disabled={isSubmitting || !inlineInput.trim()}
+          >
+            {isSubmitting ? '⏳' : '➤'}
+          </button>
+        </div>
+      )}
+
+      {/* Render Children Recursively */}
+      {node.children && node.children.length > 0 && (
+        <div className="chat-thread-children">
+          {node.children.map(child => (
+            <ChatMessageNode
+              key={child._id}
+              node={child}
+              replyingToId={replyingToId}
+              setReplyingToId={setReplyingToId}
+              onSendReply={onSendReply}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// Main ChatPanel Component
+// ============================================
+function ChatPanel({ paperId }) {
+  const [messages, setMessages] = useState([]);
+  const [rootInput, setRootInput] = useState('');
+  const [loadingRoot, setLoadingRoot] = useState(false);
+  
+  // Tracks which message ID currently has the inline reply box open
+  const [replyingToId, setReplyingToId] = useState(null);
+
+  const messagesEndRef = useRef(null);
+
+  // Auto-scroll logic (scroll to bottom only when new root messages are added)
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  // Fetch Conversation
+  useEffect(() => {
+    if (!paperId) return;
+
+    const fetchConversation = async () => {
+      try {
+        const res = await apiClient.get(`/conversations/${paperId}`);
+        setMessages(res.data.conversation.messages || []);
+        setReplyingToId(null);
+      } catch (error) {
+        console.error('Failed to load conversation:', error);
+      }
+    };
+
+    fetchConversation();
+  }, [paperId]);
+
+  // Transform flat array into tree structure
+  const messageTree = useMemo(() => buildMessageTree(messages), [messages]);
+
+  // Send a message (either root or a branch)
+  const handleSendMessage = async (content, parentId = null) => {
+    const question = content.trim();
+    if (!question) return;
+
+    const tempId = 'temp-' + Date.now();
+    const tempUserMsg = { _id: tempId, role: 'user', content: question, parentId };
+    
+    // Optimistic UI update
+    setMessages(prev => [...prev, tempUserMsg]);
+
+    try {
+      const res = await apiClient.post(`/conversations/${paperId}/message`, {
+        content: question,
+        parentId: parentId,
+      });
+
+      const { userMessage, assistantMessage } = res.data;
+
+      // Replace temp message with real ones
+      setMessages(prev => {
+        const withoutTemp = prev.filter(m => m._id !== tempId);
+        return [...withoutTemp, userMessage, assistantMessage];
+      });
+
+    } catch (error) {
+      const tempErrorMsg = {
+        _id: 'temp-error-' + Date.now(),
+        role: 'assistant',
+        content: error.response?.data?.message || 'Failed to get a response.',
+        parentId: tempId // Attach error to the optimistic user message so it shows up
+      };
+      setMessages(prev => [...prev, tempErrorMsg]);
+    }
+  };
+
+  // Submit handler for the global input (starts a new root thread)
+  const handleRootSubmit = async () => {
+    if (!rootInput.trim() || loadingRoot) return;
+    setLoadingRoot(true);
+    await handleSendMessage(rootInput, null);
+    setRootInput('');
+    setLoadingRoot(false);
+  };
+
+  const handleRootKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleRootSubmit();
     }
   };
 
@@ -94,62 +223,46 @@ function ChatPanel({ paperId }) {
         <h3>Ask about this paper</h3>
       </div>
 
-      {/* Messages Area */}
+      {/* Messages Area (Threaded View) */}
       <div className="chat-messages">
-        {messages.length === 0 && (
+        {messageTree.length === 0 && (
           <div className="chat-empty-state">
             <p className="chat-empty-icon">🤖</p>
             <p>Ask me anything about this paper!</p>
-            <p className="chat-hint">Try: "What is this paper about?" or "Summarize the key findings"</p>
+            <p className="chat-hint">Try: "What is this paper about?"</p>
           </div>
         )}
 
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`chat-message ${msg.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'}`}
-          >
-            <div className="chat-message-avatar">
-              {msg.role === 'user' ? '👤' : '🤖'}
-            </div>
-            <div className="chat-message-content">
-              {msg.content}
-            </div>
-          </div>
+        {messageTree.map(rootNode => (
+          <ChatMessageNode
+            key={rootNode._id}
+            node={rootNode}
+            replyingToId={replyingToId}
+            setReplyingToId={setReplyingToId}
+            onSendReply={handleSendMessage}
+          />
         ))}
 
-        {/* Loading indicator */}
-        {loading && (
-          <div className="chat-message chat-message-assistant">
-            <div className="chat-message-avatar">🤖</div>
-            <div className="chat-message-content chat-loading">
-              <span className="dot-pulse"></span>
-              Thinking...
-            </div>
-          </div>
-        )}
-
-        {/* Invisible element to scroll to */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
+      {/* Global Input Area (for starting completely new threads) */}
       <div className="chat-input-area">
         <input
           type="text"
           className="chat-input"
-          placeholder="Ask a question about this paper..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={loading}
+          placeholder="Start a new independent topic..."
+          value={rootInput}
+          onChange={(e) => setRootInput(e.target.value)}
+          onKeyDown={handleRootKeyDown}
+          disabled={loadingRoot}
         />
         <button
           className="chat-send-btn"
-          onClick={handleSend}
-          disabled={loading || !input.trim()}
+          onClick={handleRootSubmit}
+          disabled={loadingRoot || !rootInput.trim()}
         >
-          {loading ? '⏳' : '➤'}
+          {loadingRoot ? '⏳' : '➤'}
         </button>
       </div>
     </div>

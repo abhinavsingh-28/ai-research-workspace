@@ -782,24 +782,6 @@ button:disabled {
   font-style: italic;
 }
 
-/* Individual message */
-.chat-message {
-  display: flex;
-  gap: var(--space-sm);
-  animation: messageSlideIn 200ms ease;
-}
-
-@keyframes messageSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .chat-message-avatar {
   font-size: 1.1rem;
   flex-shrink: 0;
@@ -874,5 +856,88 @@ button:disabled {
 .chat-send-btn:hover:not(:disabled) {
   background-color: var(--bg-accent-hover);
   box-shadow: var(--shadow-glow);
+}
+
+/* ============================================
+   Branching UI
+   ============================================ */
+
+.chat-message-actions {
+  margin-top: var(--space-sm);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.branch-btn {
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 200ms ease;
+}
+
+.branch-btn:hover {
+  background-color: rgba(108, 99, 255, 0.1);
+  color: var(--text-primary);
+  border-color: rgba(108, 99, 255, 0.3);
+}
+
+/* ============================================
+   Threaded UI Layout
+   ============================================ */
+
+.chat-thread-node {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.chat-message {
+  display: flex;
+  gap: var(--space-sm);
+  animation: messageSlideIn 200ms ease;
+}
+
+@keyframes messageSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-thread-children {
+  margin-left: var(--space-md);
+  padding-left: var(--space-md);
+  border-left: 2px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+}
+
+.chat-inline-reply {
+  display: flex;
+  gap: var(--space-sm);
+  margin-left: 32px; /* Align with message text */
+  margin-top: var(--space-xs);
+  margin-bottom: var(--space-md);
+  animation: messageSlideIn 200ms ease;
+}
+
+.chat-inline-reply .chat-input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+}
+
+.chat-inline-reply .chat-send-btn {
+  padding: 8px 12px;
+  font-size: 0.9rem;
 }
 

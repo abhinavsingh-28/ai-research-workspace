@@ -178,9 +178,12 @@ async def process_document_endpoint(req: ProcessRequest):
 # ============================================
 from query_engine import query_paper
 
+from typing import List, Dict, Any, Optional
+
 class QueryRequest(BaseModel):
     paperId: str
     question: str
+    conversationHistory: Optional[List[Dict[str, Any]]] = None
 
 @app.post("/query")
 async def query_endpoint(req: QueryRequest):
@@ -189,7 +192,7 @@ async def query_endpoint(req: QueryRequest):
     It searches ChromaDB for relevant chunks and generates an answer with Gemini.
     """
     try:
-        result = query_paper(req.paperId, req.question)
+        result = query_paper(req.paperId, req.question, req.conversationHistory)
         return result
     except Exception as e:
         from fastapi import HTTPException
