@@ -23,12 +23,12 @@ PyMuPDF==1.24.10
 # langchain-chroma: the LangChain plugin that connects to ChromaDB.
 langchain==0.3.1
 langchain-google-genai==2.0.0
-langchain-chroma==0.1.4
+langchain-chroma==0.2.0
 
 # --- Vector Store ---
 # chromadb: the database that stores document embeddings (vectors)
 #           and lets us search for similar vectors.
-chromadb==0.5.5
+chromadb>=0.5.0,<0.6.0
 
 # --- Utilities ---
 # python-dotenv: reads the .env file so we can use environment variables
