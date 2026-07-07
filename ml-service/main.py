@@ -172,3 +172,25 @@ async def process_document_endpoint(req: ProcessRequest):
         # If anything goes wrong, return a 500 error to the Node backend
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# Query Endpoint — Ask Questions About Papers
+# ============================================
+from query_engine import query_paper
+
+class QueryRequest(BaseModel):
+    paperId: str
+    question: str
+
+@app.post("/query")
+async def query_endpoint(req: QueryRequest):
+    """
+    Endpoint called by the Node.js backend when a user asks a question.
+    It searches ChromaDB for relevant chunks and generates an answer with Gemini.
+    """
+    try:
+        result = query_paper(req.paperId, req.question)
+        return result
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))

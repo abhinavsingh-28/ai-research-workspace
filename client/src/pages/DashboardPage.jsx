@@ -33,6 +33,7 @@ import api from '../api/client.js';
 import Sidebar from '../components/Sidebar.jsx';
 import UploadModal from '../components/UploadModal.jsx';
 import PdfViewer from '../components/PdfViewer.jsx';
+import ChatPanel from '../components/ChatPanel.jsx';
 
 function DashboardPage() {
   // ---- State ----
@@ -124,7 +125,7 @@ function DashboardPage() {
             <p className="main-empty__text">Loading papers...</p>
           </div>
         ) : selectedPaper ? (
-          // A paper is selected — show its info (PDF viewer comes in Phase 7)
+          // A paper is selected — show PDF viewer + Chat Panel side by side
           <div className="main-paper-info">
             <div className="main-paper-info__header">
               <h1 className="main-paper-info__title">{selectedPaper.title}</h1>
@@ -132,8 +133,11 @@ function DashboardPage() {
                 {selectedPaper.originalName} · Uploaded {new Date(selectedPaper.createdAt).toLocaleDateString()}
               </p>
             </div>
-            {/* PDF Viewer */}
-            <PdfViewer fileName={selectedPaper.fileName} />
+            {/* Content: PDF + Chat side by side */}
+            <div className="main-paper-content">
+              <PdfViewer fileName={selectedPaper.fileName} />
+              <ChatPanel paperId={selectedPaper._id} />
+            </div>
           </div>
         ) : (
           // No paper selected — show empty state

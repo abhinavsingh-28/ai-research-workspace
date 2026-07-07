@@ -245,4 +245,67 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// ============================================
+// POST /:id/chat — Ask a Question About a Paper
+// ============================================
+// This route acts as a PROXY between the React frontend and the Python ML service.
+// The frontend sends the question here, we verify ownership, then forward
+// the request to the Python service which does the actual RAG work.
+//
+// Why proxy instead of letting the frontend talk directly to Python?
+//   1. Security: The frontend doesn't need to know the ML service URL.
+//   2. Auth: We verify the JWT and paper ownership here.
+//   3. Simplicity: The frontend only talks to ONE backend (port 5001).
+router.post('/:id/chat', auth, async (req, res) => {
+  try {
+    const { question } = req.body;
+
+    if (!question || !question.trim()) {
+      return res.status(400).json({ message: 'Please provide a question.' });
+    }
+
+    // ---- Verify paper exists and belongs to the user ----
+    const paper = await Paper.findById(req.params.id);
+
+    if (!paper) {
+      return res.status(404).json({ message: 'Paper not found.' });
+    }
+
+    if (paper.userId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized to access this paper.' });
+    }
+
+    // ---- Forward the question to the Python ML service ----
+    const mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+
+    const mlResponse = await fetch(`${mlServiceUrl}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        paperId: req.params.id,
+        question: question.trim(),
+      }),
+    });
+
+    if (!mlResponse.ok) {
+      const errorData = await mlResponse.json().catch(() => ({}));
+      console.error('ML service error:', errorData);
+      return res.status(502).json({
+        message: 'AI service is unavailable. Make sure the ML service is running.',
+      });
+    }
+
+    const data = await mlResponse.json();
+
+    res.json({
+      answer: data.answer,
+      sources: data.sources,
+    });
+  } catch (error) {
+    console.error('Chat error:', error.message);
+    res.status(500).json({ message: 'Server error processing your question.' });
+  }
+});
+
 export default router;
+
