@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import apiClient from '../api/client.js';
+import { User, Bot, GitBranch, MessageSquareDashed, MessageCircle, Loader2, Send } from 'lucide-react';
 
 function ChatPanel({ paperId, activeConversationId, onConversationChange }) {
   const [messages, setMessages] = useState([]);
@@ -109,7 +110,7 @@ function ChatPanel({ paperId, activeConversationId, onConversationChange }) {
     return (
       <div className="chat-panel">
         <div className="chat-empty-state">
-          <p className="chat-empty-icon">👈</p>
+          <MessageSquareDashed size={48} className="chat-empty-icon" style={{ opacity: 0.5, marginBottom: '8px' }} />
           <p>Select a chat from the sidebar</p>
           <p className="chat-hint">Or click "+ New Root Chat" to start a new discussion.</p>
         </div>
@@ -121,15 +122,15 @@ function ChatPanel({ paperId, activeConversationId, onConversationChange }) {
     <div className="chat-panel">
       {/* Header */}
       <div className="chat-panel-header">
-        <span className="chat-panel-icon">💬</span>
-        <h3>Ask about this paper</h3>
+        <MessageCircle size={18} className="chat-panel-icon" />
+        <h3>Conversation</h3>
       </div>
 
       {/* Messages Area */}
       <div className="chat-messages">
         {messages.length === 0 && (
           <div className="chat-empty-state">
-            <p className="chat-empty-icon">🤖</p>
+            <Bot size={48} className="chat-empty-icon" />
             <p>Ask me anything about this paper!</p>
           </div>
         )}
@@ -142,7 +143,7 @@ function ChatPanel({ paperId, activeConversationId, onConversationChange }) {
               className={`chat-message ${msg.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'}`}
             >
               <div className="chat-message-avatar">
-                {msg.role === 'user' ? '👤' : '🤖'}
+                {msg.role === 'user' ? <User size={18} /> : <Bot size={18} />}
               </div>
               <div className="chat-message-content">
                 {msg.content}
@@ -156,7 +157,7 @@ function ChatPanel({ paperId, activeConversationId, onConversationChange }) {
                       disabled={isBranching}
                       title="Open this context in a new independent branch"
                     >
-                      ⑂ Open in Branch
+                      <GitBranch size={14} /> Branch
                     </button>
                   </div>
                 )}
@@ -196,7 +197,7 @@ function ChatPanel({ paperId, activeConversationId, onConversationChange }) {
           onClick={handleSend}
           disabled={loading || !input.trim()}
         >
-          {loading ? '⏳' : '➤'}
+          {loading ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
         </button>
       </div>
     </div>

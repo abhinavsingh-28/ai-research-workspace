@@ -29,25 +29,25 @@
    :root targets the <html> element — the root of the document.
    Variables defined here are inherited by every element on the page. */
 :root {
-  /* --- Colors (Dark Theme) --- */
-  --bg-primary: #0a0a0f;          /* Deepest background — page body */
-  --bg-secondary: #12121a;        /* Slightly lighter — sidebar, cards */
-  --bg-surface: #1a1a2e;          /* Component surfaces — inputs, panels */
-  --bg-surface-hover: #22223a;    /* Surface on hover — interactive feedback */
-  --bg-accent: #6c63ff;           /* Primary brand color — buttons, links */
-  --bg-accent-hover: #7b73ff;     /* Accent on hover */
-  --bg-danger: #ff4757;           /* Error/destructive — delete buttons */
-  --bg-danger-hover: #ff6b81;     /* Danger on hover */
-  --bg-success: #2ed573;          /* Success — confirmation messages */
+  /* --- Colors (Professional Dark Slate) --- */
+  --bg-primary: #09090b;          /* Page body */
+  --bg-secondary: #121214;        /* Sidebar, cards */
+  --bg-surface: #18181b;          /* Component surfaces */
+  --bg-surface-hover: #27272a;    /* Surface on hover */
+  --bg-accent: #f4f4f5;           /* Primary brand color — stark white for contrast */
+  --bg-accent-hover: #e4e4e7;     /* Accent on hover */
+  --bg-danger: #ef4444;           /* Error/destructive */
+  --bg-danger-hover: #dc2626;     
+  --bg-success: #22c55e;          
 
-  --text-primary: #e8e8f0;        /* Main text — headings, body */
-  --text-secondary: #9494a8;      /* Secondary text — labels, hints */
-  --text-muted: #5a5a72;          /* Muted text — timestamps, placeholders */
-  --text-inverse: #ffffff;        /* Text on accent backgrounds */
+  --text-primary: #fafafa;        /* Main text */
+  --text-secondary: #a1a1aa;      /* Secondary text */
+  --text-muted: #71717a;          /* Muted text */
+  --text-inverse: #09090b;        /* Text on accent backgrounds (dark text on white) */
 
-  --border-color: #2a2a3e;        /* Default borders */
-  --border-subtle: #1e1e30;       /* Subtle dividers */
-  --border-accent: #6c63ff;       /* Focused input borders */
+  --border-color: #27272a;        /* Default borders */
+  --border-subtle: #18181b;       /* Subtle dividers */
+  --border-accent: #52525b;       /* Focused input borders */
 
   /* --- Layout --- */
   --sidebar-width: 280px;
@@ -65,17 +65,17 @@
   --space-xl: 32px;
   --space-2xl: 48px;
 
-  /* --- Border Radius --- */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  /* --- Border Radius (Sharper, Utility style) --- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --radius-full: 9999px;
 
-  /* --- Shadows --- */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(108, 99, 255, 0.15);
+  /* --- Shadows (Subtle, no neon) --- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-glow: none; /* Removed glow */
 
   /* --- Transitions --- */
   --transition-fast: 150ms ease;
@@ -149,8 +149,7 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: var(--bg-accent);
-  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+  border-color: var(--text-muted);
 }
 
 /* Placeholder text style */
@@ -195,7 +194,6 @@ button:disabled {
 
 .btn-primary:hover:not(:disabled) {
   background-color: var(--bg-accent-hover);
-  box-shadow: var(--shadow-glow);
 }
 
 /* Danger button — used for delete actions */
@@ -247,10 +245,7 @@ button:disabled {
   font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: var(--space-xs);
-  background: linear-gradient(135deg, var(--bg-accent), #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
 }
 
 .auth-card .subtitle {
@@ -352,13 +347,12 @@ button:disabled {
 }
 
 .sidebar-title {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 600;
   margin-bottom: var(--space-md);
-  background: linear-gradient(135deg, var(--bg-accent), #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .sidebar-upload-btn {
@@ -389,9 +383,7 @@ button:disabled {
 }
 
 .sidebar-paper-item--active {
-  background-color: var(--bg-surface);
-  border-left: 3px solid var(--bg-accent);
-  padding-left: calc(var(--space-lg) - 3px);
+  background-color: var(--bg-surface-hover);
 }
 
 .sidebar-paper-item__content {
@@ -753,10 +745,8 @@ button:disabled {
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-md);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
 }
 
 /* Empty state */
@@ -782,27 +772,67 @@ button:disabled {
   font-style: italic;
 }
 
+.chat-message {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* User messages get a slightly different background, assistant gets primary background */
+.chat-message-user {
+  background-color: var(--bg-primary);
+}
+
+.chat-message-assistant {
+  background-color: var(--bg-secondary);
+}
+
 .chat-message-avatar {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   flex-shrink: 0;
-  margin-top: 2px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
 }
 
 .chat-message-content {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   line-height: 1.6;
   color: var(--text-primary);
-  background-color: var(--bg-surface);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-md);
-  max-width: 100%;
+  flex: 1;
+  min-width: 0;
   word-wrap: break-word;
   white-space: pre-wrap;
 }
 
-.chat-message-user .chat-message-content {
-  background-color: rgba(108, 99, 255, 0.15);
-  border: 1px solid rgba(108, 99, 255, 0.2);
+.chat-message-actions {
+  margin-top: var(--space-md);
+}
+
+.branch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.branch-btn:hover:not(:disabled) {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 /* Loading animation */
@@ -812,6 +842,15 @@ button:disabled {
   gap: var(--space-sm);
   color: var(--text-secondary);
   font-style: italic;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .dot-pulse {
@@ -973,22 +1012,30 @@ button:disabled {
 }
 
 .tree-node-actions button {
-  background: none;
+  background: transparent;
   border: none;
   cursor: pointer;
-  font-size: 0.8rem;
+  padding: 4px;
   color: var(--text-muted);
-  padding: 2px 4px;
-  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: all var(--transition-fast);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tree-node-actions button:hover {
-  background: var(--bg-secondary);
+  background-color: var(--bg-surface);
   color: var(--text-primary);
+}
+
+.tree-node-actions .tree-action-delete:hover {
+  color: var(--error);
+  background-color: rgba(220, 38, 38, 0.1);
 }
 
 .tree-node-children {
   display: flex;
   flex-direction: column;
 }
-

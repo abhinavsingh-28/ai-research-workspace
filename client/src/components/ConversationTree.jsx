@@ -4,7 +4,8 @@
 // Renders the ChatGPT-style branching tree in the sidebar.
 // Handles nesting, collapsing/expanding, renaming, and deleting.
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import apiClient from '../api/client.js';
 
 // ============================================
@@ -47,6 +48,8 @@ function ConversationTreeNode({
 
   const handleDelete = async (e) => {
     e.stopPropagation();
+    e.preventDefault();
+    console.log('Trash button clicked! Node ID:', node._id);
     const descendantsCount = countDescendants(node);
     const cascade = descendantsCount > 0;
     
@@ -54,8 +57,12 @@ function ConversationTreeNode({
       ? `Are you sure you want to delete this chat and its ${descendantsCount} nested branch${descendantsCount > 1 ? 'es' : ''}?` 
       : 'Are you sure you want to delete this chat?';
 
+    console.log('Showing confirm dialog:', msg);
     if (window.confirm(msg)) {
+      console.log('Confirmed delete for node ID:', node._id);
       onDeleteConversation(node._id, cascade);
+    } else {
+      console.log('Cancelled delete for node ID:', node._id);
     }
   };
 
@@ -88,12 +95,11 @@ function ConversationTreeNode({
         onClick={handleSelect}
       >
         {/* Expand/Collapse Arrow */}
-        <div 
-          className={`tree-node-arrow ${hasChildren ? '' : 'tree-node-arrow--hidden'}`}
-          onClick={handleToggle}
-        >
-          {isExpanded ? '▼' : '▶'}
-        </div>
+        {hasChildren && (
+          <span className="tree-toggle" onClick={handleToggle}>
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </span>
+        )}
 
         {/* Title or Edit Input */}
         <div className="tree-node-content" onDoubleClick={startRename}>
@@ -115,8 +121,12 @@ function ConversationTreeNode({
         {/* Action Menu (Hover) */}
         {!isEditing && (
           <div className="tree-node-actions">
-            <button onClick={startRename} title="Rename">✏️</button>
-            <button onClick={handleDelete} title="Delete">🗑</button>
+            <button onClick={startRename} title="Rename" className="tree-action-btn">
+              <Pencil size={12} />
+            </button>
+            <button onClick={handleDelete} title="Delete" className="tree-action-btn tree-action-delete">
+              <Trash2 size={12} />
+            </button>
           </div>
         )}
       </div>

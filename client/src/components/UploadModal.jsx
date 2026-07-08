@@ -30,7 +30,8 @@
 //    useRef creates a reference to a DOM element. We use it to programmatically
 //    trigger the hidden <input type="file"> when the user clicks "Choose file".
 
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
+import { X, FileText, UploadCloud } from 'lucide-react';
 import api from '../api/client.js';
 import { formatFileSize } from '../utils/formatFileSize.js';
 
@@ -147,7 +148,7 @@ function UploadModal({ onClose, onUploadSuccess }) {
       <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Upload Paper</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={20} /></button>
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -163,7 +164,7 @@ function UploadModal({ onClose, onUploadSuccess }) {
           {file ? (
             // File is selected — show file info
             <div className="drop-zone__file-info">
-              <span className="drop-zone__icon">📄</span>
+              <span className="drop-zone__icon"><FileText size={32} /></span>
               <p className="drop-zone__filename">{file.name}</p>
               <p className="drop-zone__filesize">{formatFileSize(file.size)}</p>
               <p className="drop-zone__change">Click or drag to change file</p>
@@ -171,7 +172,7 @@ function UploadModal({ onClose, onUploadSuccess }) {
           ) : (
             // No file — show instructions
             <div className="drop-zone__placeholder">
-              <span className="drop-zone__icon">📁</span>
+              <span className="drop-zone__icon"><UploadCloud size={32} /></span>
               <p className="drop-zone__text">Drag & drop a PDF here</p>
               <p className="drop-zone__subtext">or click to choose a file</p>
             </div>

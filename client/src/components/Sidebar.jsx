@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatFileSize } from '../utils/formatFileSize.js';
 import ConversationTree from './ConversationTree.jsx';
 import apiClient from '../api/client.js';
+import { Library, Trash2, ArrowLeft } from 'lucide-react';
 
 function Sidebar({ 
   papers, 
@@ -87,19 +88,27 @@ function Sidebar({
   };
 
   const handleDeleteConversation = async (id, cascade) => {
+    console.log('handleDeleteConversation called with:', { id, cascade, activeConversationId });
     try {
       await apiClient.delete(`/conversations/${id}?cascade=${cascade}`);
+      console.log('Delete API call succeeded');
       // Automatically select the nearest valid conversation after deletion
       if (activeConversationId === id) {
+        console.log('Deleted conversation was active');
         const deletedConvo = conversations.find(c => c._id === id);
         if (deletedConvo && deletedConvo.parentId) {
+          console.log('Selecting parent convo:', deletedConvo.parentId);
           onSelectConversation(deletedConvo.parentId);
         } else {
           const fallback = conversations.find(c => c._id !== id && !c.parentId);
+          console.log('Selecting fallback convo:', fallback ? fallback._id : null);
           onSelectConversation(fallback ? fallback._id : null);
         }
+      } else {
+        console.log('Deleted conversation was NOT active');
       }
-      fetchConversations();
+      await fetchConversations();
+      console.log('fetchConversations finished');
     } catch (error) {
       console.error('Failed to delete conversation:', error);
     }
@@ -126,7 +135,7 @@ function Sidebar({
       <div className="sidebar-papers">
         {papers.length === 0 ? (
           <div className="sidebar-empty">
-            <span className="sidebar-empty__icon">📚</span>
+            <Library size={48} className="sidebar-empty__icon" style={{ opacity: 0.5, marginBottom: '8px' }} />
             <p className="sidebar-empty__text">No papers yet</p>
             <p className="sidebar-empty__subtext">Upload your first research paper</p>
           </div>
@@ -148,7 +157,7 @@ function Sidebar({
                 onClick={(e) => handleDeletePaper(e, paper._id)}
                 title="Delete paper"
               >
-                🗑
+                <Trash2 size={16} />
               </button>
             </div>
           ))
@@ -162,7 +171,7 @@ function Sidebar({
     <>
       <div className="sidebar-header">
         <button className="btn-ghost sidebar-back-btn" onClick={onBackToPapers}>
-          ← Back to Papers
+          <ArrowLeft size={16} /> Back to Papers
         </button>
         <button className="btn-primary sidebar-upload-btn" onClick={handleNewRootChat}>
           + New Root Chat
