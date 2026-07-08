@@ -39,6 +39,7 @@ function DashboardPage() {
   // ---- State ----
   const [papers, setPapers] = useState([]);               // Array of paper objects from API
   const [selectedPaper, setSelectedPaper] = useState(null); // Currently selected paper
+  const [activeConversationId, setActiveConversationId] = useState(null); // Currently opened branch
   const [showUploadModal, setShowUploadModal] = useState(false); // Modal visibility
   const [isLoadingPapers, setIsLoadingPapers] = useState(true);  // Loading state for initial fetch
 
@@ -70,6 +71,7 @@ function DashboardPage() {
   // Called when a paper in the sidebar is clicked.
   const handleSelectPaper = (paper) => {
     setSelectedPaper(paper);
+    setActiveConversationId(null); // Reset active conversation when switching papers
   };
 
   // Called when upload succeeds — re-fetch the paper list to include the new paper.
@@ -115,6 +117,12 @@ function DashboardPage() {
         onSelectPaper={handleSelectPaper}
         onDeletePaper={handleDeletePaper}
         onUploadClick={() => setShowUploadModal(true)}
+        activeConversationId={activeConversationId}
+        onSelectConversation={setActiveConversationId}
+        onBackToPapers={() => {
+          setSelectedPaper(null);
+          setActiveConversationId(null);
+        }}
       />
 
       {/* Main Content Area */}
@@ -136,7 +144,11 @@ function DashboardPage() {
             {/* Content: PDF + Chat side by side */}
             <div className="main-paper-content">
               <PdfViewer fileName={selectedPaper.fileName} />
-              <ChatPanel paperId={selectedPaper._id} />
+              <ChatPanel 
+                paperId={selectedPaper._id}
+                activeConversationId={activeConversationId}
+                onConversationChange={setActiveConversationId}
+              />
             </div>
           </div>
         ) : (

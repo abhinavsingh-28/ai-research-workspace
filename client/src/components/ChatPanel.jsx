@@ -1,219 +1,121 @@
 // ============================================
-// ChatPanel — Recursive Threaded View
+// ChatPanel — Isolated Flat Conversation UI
 // ============================================
-// This component displays conversational branches simultaneously as a tree.
-// Users can see multiple branches at once and reply inline to any message.
+// This component displays a single conversation branch linearly.
+// All branching logic is handled via the "Open in Branch" button,
+// which creates a new isolated conversation and switches to it.
 
-import { useState, useRef, useEffect, useMemo } from 'react';
-import apiClient from '../api/client';
+import { useState, useRef, useEffect } from 'react';
+import apiClient from '../api/client.js';
 
-// ============================================
-// Helper: Build Tree
-// ============================================
-// Converts a flat array of messages (where each has a parentId)
-// into a nested tree structure (where each has a children[] array).
-function buildMessageTree(messages) {
-  const messageMap = {};
-  const roots = [];
-
-  // Initialize map and children arrays
-  messages.forEach(msg => {
-    messageMap[msg._id] = { ...msg, children: [] };
-  });
-
-  // Link children to parents
-  messages.forEach(msg => {
-    const node = messageMap[msg._id];
-    if (msg.parentId && messageMap[msg.parentId]) {
-      messageMap[msg.parentId].children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-
-  return roots;
-}
-
-// ============================================
-// Recursive Message Node Component
-// ============================================
-function ChatMessageNode({ node, replyingToId, setReplyingToId, onSendReply }) {
-  const [inlineInput, setInlineInput] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const isReplying = replyingToId === node._id;
-
-  const handleInlineSubmit = async () => {
-    if (!inlineInput.trim()) return;
-    setIsSubmitting(true);
-    await onSendReply(inlineInput, node._id);
-    setInlineInput('');
-    setIsSubmitting(false);
-    setReplyingToId(null);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleInlineSubmit();
-    }
-  };
-
-  return (
-    <div className="chat-thread-node">
-      {/* The Message Itself */}
-      <div className={`chat-message ${node.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'}`}>
-        <div className="chat-message-avatar">
-          {node.role === 'user' ? '👤' : '🤖'}
-        </div>
-        <div className="chat-message-content">
-          {node.content}
-          
-          {/* Action buttons (only AI responses can be branched from) */}
-          {node.role === 'assistant' && node._id !== 'temp-error' && !node._id.startsWith('temp-') && (
-            <div className="chat-message-actions">
-              <button 
-                className="branch-btn"
-                onClick={() => setReplyingToId(isReplying ? null : node._id)}
-                title="Start a new conversation branch from this message"
-              >
-                {isReplying ? 'Cancel' : '⑂ Branch from here'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Inline Reply Box (if active) */}
-      {isReplying && (
-        <div className="chat-inline-reply">
-          <input
-            autoFocus
-            type="text"
-            className="chat-input"
-            placeholder="Ask a follow-up question..."
-            value={inlineInput}
-            onChange={(e) => setInlineInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isSubmitting}
-          />
-          <button
-            className="chat-send-btn"
-            onClick={handleInlineSubmit}
-            disabled={isSubmitting || !inlineInput.trim()}
-          >
-            {isSubmitting ? '⏳' : '➤'}
-          </button>
-        </div>
-      )}
-
-      {/* Render Children Recursively */}
-      {node.children && node.children.length > 0 && (
-        <div className="chat-thread-children">
-          {node.children.map(child => (
-            <ChatMessageNode
-              key={child._id}
-              node={child}
-              replyingToId={replyingToId}
-              setReplyingToId={setReplyingToId}
-              onSendReply={onSendReply}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================
-// Main ChatPanel Component
-// ============================================
-function ChatPanel({ paperId }) {
+function ChatPanel({ paperId, activeConversationId, onConversationChange }) {
   const [messages, setMessages] = useState([]);
-  const [rootInput, setRootInput] = useState('');
-  const [loadingRoot, setLoadingRoot] = useState(false);
-  
-  // Tracks which message ID currently has the inline reply box open
-  const [replyingToId, setReplyingToId] = useState(null);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [isBranching, setIsBranching] = useState(false);
 
   const messagesEndRef = useRef(null);
 
-  // Auto-scroll logic (scroll to bottom only when new root messages are added)
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
-  // Fetch Conversation
+  // Fetch the active conversation
   useEffect(() => {
-    if (!paperId) return;
+    if (!activeConversationId) {
+      setMessages([]);
+      return;
+    }
 
+    let isMounted = true;
     const fetchConversation = async () => {
       try {
-        const res = await apiClient.get(`/conversations/${paperId}`);
-        setMessages(res.data.conversation.messages || []);
-        setReplyingToId(null);
+        const res = await apiClient.get(`/conversations/${activeConversationId}`);
+        if (isMounted) {
+          setMessages(res.data.conversation.messages || []);
+        }
       } catch (error) {
         console.error('Failed to load conversation:', error);
       }
     };
 
     fetchConversation();
-  }, [paperId]);
+    return () => { isMounted = false; };
+  }, [activeConversationId]);
 
-  // Transform flat array into tree structure
-  const messageTree = useMemo(() => buildMessageTree(messages), [messages]);
+  // Handle sending a new message
+  const handleSend = async () => {
+    const question = input.trim();
+    if (!question || loading || !activeConversationId) return;
 
-  // Send a message (either root or a branch)
-  const handleSendMessage = async (content, parentId = null) => {
-    const question = content.trim();
-    if (!question) return;
-
+    // Optimistic UI
     const tempId = 'temp-' + Date.now();
-    const tempUserMsg = { _id: tempId, role: 'user', content: question, parentId };
-    
-    // Optimistic UI update
-    setMessages(prev => [...prev, tempUserMsg]);
+    setMessages(prev => [...prev, { _id: tempId, role: 'user', content: question }]);
+    setInput('');
+    setLoading(true);
 
     try {
-      const res = await apiClient.post(`/conversations/${paperId}/message`, {
-        content: question,
-        parentId: parentId,
+      const res = await apiClient.post(`/conversations/${activeConversationId}/message`, {
+        content: question
       });
 
       const { userMessage, assistantMessage } = res.data;
 
-      // Replace temp message with real ones
+      // Replace temp with real
       setMessages(prev => {
         const withoutTemp = prev.filter(m => m._id !== tempId);
         return [...withoutTemp, userMessage, assistantMessage];
       });
-
     } catch (error) {
-      const tempErrorMsg = {
-        _id: 'temp-error-' + Date.now(),
+      setMessages(prev => [...prev, {
+        _id: 'temp-err-' + Date.now(),
         role: 'assistant',
         content: error.response?.data?.message || 'Failed to get a response.',
-        parentId: tempId // Attach error to the optimistic user message so it shows up
-      };
-      setMessages(prev => [...prev, tempErrorMsg]);
+      }]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Submit handler for the global input (starts a new root thread)
-  const handleRootSubmit = async () => {
-    if (!rootInput.trim() || loadingRoot) return;
-    setLoadingRoot(true);
-    await handleSendMessage(rootInput, null);
-    setRootInput('');
-    setLoadingRoot(false);
+  // Branching action
+  const handleBranch = async (index) => {
+    if (isBranching || !activeConversationId) return;
+    setIsBranching(true);
+    
+    try {
+      const res = await apiClient.post(`/conversations/${activeConversationId}/branch`, {
+        messageIndex: index
+      });
+      // Switch to the newly created branch
+      onConversationChange(res.data.conversation._id);
+    } catch (error) {
+      console.error('Failed to branch:', error);
+      alert('Failed to branch conversation. Please try again.');
+    } finally {
+      setIsBranching(false);
+    }
   };
 
-  const handleRootKeyDown = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleRootSubmit();
+      handleSend();
     }
   };
+
+  // Empty State: No active conversation selected
+  if (!activeConversationId) {
+    return (
+      <div className="chat-panel">
+        <div className="chat-empty-state">
+          <p className="chat-empty-icon">👈</p>
+          <p>Select a chat from the sidebar</p>
+          <p className="chat-hint">Or click "+ New Root Chat" to start a new discussion.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chat-panel">
@@ -223,46 +125,78 @@ function ChatPanel({ paperId }) {
         <h3>Ask about this paper</h3>
       </div>
 
-      {/* Messages Area (Threaded View) */}
+      {/* Messages Area */}
       <div className="chat-messages">
-        {messageTree.length === 0 && (
+        {messages.length === 0 && (
           <div className="chat-empty-state">
             <p className="chat-empty-icon">🤖</p>
             <p>Ask me anything about this paper!</p>
-            <p className="chat-hint">Try: "What is this paper about?"</p>
           </div>
         )}
 
-        {messageTree.map(rootNode => (
-          <ChatMessageNode
-            key={rootNode._id}
-            node={rootNode}
-            replyingToId={replyingToId}
-            setReplyingToId={setReplyingToId}
-            onSendReply={handleSendMessage}
-          />
-        ))}
+        {messages.map((msg, index) => {
+          if (msg.isHidden) return null;
+          return (
+            <div
+              key={msg._id || index}
+              className={`chat-message ${msg.role === 'user' ? 'chat-message-user' : 'chat-message-assistant'}`}
+            >
+              <div className="chat-message-avatar">
+                {msg.role === 'user' ? '👤' : '🤖'}
+              </div>
+              <div className="chat-message-content">
+                {msg.content}
+                
+                {/* Branch Button (only on AI responses) */}
+                {msg.role === 'assistant' && !msg._id?.startsWith('temp-err') && (
+                  <div className="chat-message-actions">
+                    <button 
+                      className="branch-btn"
+                      onClick={() => handleBranch(index)}
+                      disabled={isBranching}
+                      title="Open this context in a new independent branch"
+                    >
+                      ⑂ Open in Branch
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
 
+        {/* Loading indicator */}
+        {loading && (
+          <div className="chat-message chat-message-assistant">
+            <div className="chat-message-avatar">🤖</div>
+            <div className="chat-message-content chat-loading">
+              <span className="dot-pulse"></span>
+              Thinking...
+            </div>
+          </div>
+        )}
+
+        {/* Invisible element to scroll to */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Global Input Area (for starting completely new threads) */}
+      {/* Input Area */}
       <div className="chat-input-area">
         <input
           type="text"
           className="chat-input"
-          placeholder="Start a new independent topic..."
-          value={rootInput}
-          onChange={(e) => setRootInput(e.target.value)}
-          onKeyDown={handleRootKeyDown}
-          disabled={loadingRoot}
+          placeholder="Ask a question..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={loading}
         />
         <button
           className="chat-send-btn"
-          onClick={handleRootSubmit}
-          disabled={loadingRoot || !rootInput.trim()}
+          onClick={handleSend}
+          disabled={loading || !input.trim()}
         >
-          {loadingRoot ? '⏳' : '➤'}
+          {loading ? '⏳' : '➤'}
         </button>
       </div>
     </div>

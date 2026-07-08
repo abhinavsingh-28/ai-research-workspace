@@ -888,56 +888,107 @@ button:disabled {
 }
 
 /* ============================================
-   Threaded UI Layout
+   Sidebar Conversation Tree
    ============================================ */
 
-.chat-thread-node {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
+.sidebar-back-btn {
+  font-size: 0.85rem;
+  padding: 4px 8px;
+  margin-bottom: var(--space-sm);
+  display: block;
 }
 
-.chat-message {
-  display: flex;
-  gap: var(--space-sm);
-  animation: messageSlideIn 200ms ease;
-}
-
-@keyframes messageSlideIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.chat-thread-children {
-  margin-left: var(--space-md);
-  padding-left: var(--space-md);
-  border-left: 2px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  margin-top: var(--space-sm);
-}
-
-.chat-inline-reply {
-  display: flex;
-  gap: var(--space-sm);
-  margin-left: 32px; /* Align with message text */
-  margin-top: var(--space-xs);
-  margin-bottom: var(--space-md);
-  animation: messageSlideIn 200ms ease;
-}
-
-.chat-inline-reply .chat-input {
+.sidebar-tree-container {
   flex: 1;
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-primary);
+  overflow-y: auto;
+  padding: var(--space-md) 0;
 }
 
-.chat-inline-reply .chat-send-btn {
-  padding: 8px 12px;
-  font-size: 0.9rem;
+.tree-node-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  margin: 2px 12px;
+  transition: all 150ms ease;
+}
+
+.tree-node:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.tree-node--active {
+  background-color: rgba(108, 99, 255, 0.15);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.tree-node-arrow {
+  width: 20px;
+  font-size: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.tree-node-arrow--hidden {
+  visibility: hidden;
+}
+
+.tree-node-content {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.85rem;
+}
+
+.tree-node-input {
+  width: 100%;
+  padding: 2px 4px;
+  font-size: 0.85rem;
+  border: 1px solid var(--bg-accent);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.tree-node-actions {
+  display: none;
+  gap: 4px;
+}
+
+.tree-node:hover .tree-node-actions {
+  display: flex;
+}
+
+.tree-node-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.tree-node-actions button:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.tree-node-children {
+  display: flex;
+  flex-direction: column;
 }
 

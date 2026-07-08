@@ -1,80 +1,136 @@
-// ============================================
-// Sidebar Component — Paper Navigator
-// ============================================
-// The left sidebar of the app, containing:
-//   1. App title/branding
-//   2. "Upload Paper" button
-//   3. List of the user's papers (from the API)
-//   4. User info + logout at the bottom
-//
-// CONCEPTS:
-//
-// 1. Props:
-//    This component receives its data and callbacks as props from DashboardPage:
-//      papers          — the array of paper objects to display
-//      selectedPaperId — which paper is currently selected (highlighted)
-//      onSelectPaper   — callback when a paper is clicked
-//      onDeletePaper   — callback when a paper's delete button is clicked
-//      onUploadClick   — callback when "Upload Paper" button is clicked
-//
-//    This makes Sidebar a "presentational" component — it displays data and
-//    reports user actions, but doesn't manage state or make API calls itself.
-//    DashboardPage (the "container") handles the state and API logic.
-//
-// 2. Conditional rendering:
-//    {papers.length === 0 ? <EmptyState /> : <PaperList />}
-//    Show different UI based on whether there are papers.
-//
-// 3. Date formatting:
-//    new Date(dateString).toLocaleDateString() converts ISO date strings
-//    like "2026-07-06T13:22:36.256Z" into locale-friendly format like "7/6/2026".
-
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import { formatFileSize } from '../utils/formatFileSize.js';
+import ConversationTree from './ConversationTree.jsx';
+import apiClient from '../api/client.js';
 
-function Sidebar({ papers, selectedPaperId, onSelectPaper, onDeletePaper, onUploadClick }) {
+function Sidebar({ 
+  papers, 
+  selectedPaperId, 
+  onSelectPaper, 
+  onDeletePaper, 
+  onUploadClick,
+  activeConversationId,
+  onSelectConversation,
+  onBackToPapers
+}) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Conversation state for the selected paper
+  const [conversations, setConversations] = useState([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+
+  // Fetch conversations when a paper is selected
+  const fetchConversations = useCallback(async () => {
+    if (!selectedPaperId) return;
+    setIsLoadingConversations(true);
+    try {
+      const res = await apiClient.get(`/conversations/paper/${selectedPaperId}`);
+      setConversations(res.data.conversations || []);
+    } catch (error) {
+      console.error('Failed to fetch conversations:', error);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  }, [selectedPaperId]);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  // When the conversations list updates, check if the active conversation was deleted.
+  // If it was, clear the active conversation.
+  useEffect(() => {
+    if (activeConversationId && conversations.length > 0) {
+      const stillExists = conversations.some(c => c._id === activeConversationId);
+      if (!stillExists) {
+        onSelectConversation(null);
+      }
+    }
+  }, [conversations, activeConversationId, onSelectConversation]);
+
+  // If activeConversationId changes and we don't have it, fetch (e.g. branch created in ChatPanel)
+  useEffect(() => {
+    if (activeConversationId) {
+      setConversations(prev => {
+        if (!prev.some(c => c._id === activeConversationId)) {
+          // It's a new branch not in our list, fetch it!
+          fetchConversations();
+        }
+        return prev;
+      });
+    }
+  }, [activeConversationId, fetchConversations]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  // Delete handler with confirmation dialog.
-  // window.confirm() shows a native browser dialog with OK/Cancel buttons.
-  // It returns true if the user clicks OK, false if they click Cancel.
-  // e.stopPropagation() prevents the click from bubbling up to the
-  // paper item's onClick (which would select the paper we're deleting).
-  const handleDelete = (e, paperId) => {
+  const handleDeletePaper = (e, paperId) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this paper?')) {
       onDeletePaper(paperId);
     }
   };
 
-  return (
-    <aside className="app-sidebar">
-      {/* ---- Header: App Title + Upload Button ---- */}
+  const handleNewRootChat = async () => {
+    try {
+      const res = await apiClient.post(`/conversations/paper/${selectedPaperId}/root`);
+      await fetchConversations();
+      onSelectConversation(res.data.conversation._id);
+    } catch (error) {
+      console.error('Failed to create root chat:', error);
+    }
+  };
+
+  const handleDeleteConversation = async (id, cascade) => {
+    try {
+      await apiClient.delete(`/conversations/${id}?cascade=${cascade}`);
+      // Automatically select the nearest valid conversation after deletion
+      if (activeConversationId === id) {
+        const deletedConvo = conversations.find(c => c._id === id);
+        if (deletedConvo && deletedConvo.parentId) {
+          onSelectConversation(deletedConvo.parentId);
+        } else {
+          const fallback = conversations.find(c => c._id !== id && !c.parentId);
+          onSelectConversation(fallback ? fallback._id : null);
+        }
+      }
+      fetchConversations();
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
+  };
+
+  const handleRenameConversation = async (id, title) => {
+    try {
+      await apiClient.patch(`/conversations/${id}`, { title });
+      fetchConversations();
+    } catch (error) {
+      console.error('Failed to rename conversation:', error);
+    }
+  };
+
+  // Render the Papers List view
+  const renderPapersView = () => (
+    <>
       <div className="sidebar-header">
         <h2 className="sidebar-title">AI Research</h2>
         <button className="btn-primary sidebar-upload-btn" onClick={onUploadClick}>
           + Upload Paper
         </button>
       </div>
-
-      {/* ---- Paper List ---- */}
       <div className="sidebar-papers">
         {papers.length === 0 ? (
-          // Empty state — shown when the user has no papers yet
           <div className="sidebar-empty">
             <span className="sidebar-empty__icon">📚</span>
             <p className="sidebar-empty__text">No papers yet</p>
             <p className="sidebar-empty__subtext">Upload your first research paper</p>
           </div>
         ) : (
-          // Paper list — one item per paper
           papers.map((paper) => (
             <div
               key={paper._id}
@@ -89,7 +145,7 @@ function Sidebar({ papers, selectedPaperId, onSelectPaper, onDeletePaper, onUplo
               </div>
               <button
                 className="sidebar-paper-item__delete"
-                onClick={(e) => handleDelete(e, paper._id)}
+                onClick={(e) => handleDeletePaper(e, paper._id)}
                 title="Delete paper"
               >
                 🗑
@@ -98,6 +154,41 @@ function Sidebar({ papers, selectedPaperId, onSelectPaper, onDeletePaper, onUplo
           ))
         )}
       </div>
+    </>
+  );
+
+  // Render the Conversations Tree view
+  const renderConversationsView = () => (
+    <>
+      <div className="sidebar-header">
+        <button className="btn-ghost sidebar-back-btn" onClick={onBackToPapers}>
+          ← Back to Papers
+        </button>
+        <button className="btn-primary sidebar-upload-btn" onClick={handleNewRootChat}>
+          + New Root Chat
+        </button>
+      </div>
+      <div className="sidebar-tree-container">
+        {isLoadingConversations ? (
+          <div className="sidebar-empty">
+            <p className="sidebar-empty__text">Loading chats...</p>
+          </div>
+        ) : (
+          <ConversationTree
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            onSelectConversation={onSelectConversation}
+            onDeleteConversation={handleDeleteConversation}
+            onRenameConversation={handleRenameConversation}
+          />
+        )}
+      </div>
+    </>
+  );
+
+  return (
+    <aside className="app-sidebar">
+      {selectedPaperId ? renderConversationsView() : renderPapersView()}
 
       {/* ---- User Info + Logout ---- */}
       <div className="sidebar-footer">
